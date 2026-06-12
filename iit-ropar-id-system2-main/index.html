@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IIT Ropar - Intern Attendance & ID Card Hub</title>
+    <!-- Style Sheet -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- CDNs for External Libraries -->
+    <!-- SheetJS for Excel Upload Parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- html2canvas for converting ID card HTML to Image -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- QRious for dynamic QR Code generation -->
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="nav-container">
+            <a href="#" class="brand" onclick="switchTab('terminal')">
+                <div class="brand-logo-container">
+                    <!-- Elegant SVG Logo Representation of IIT Ropar -->
+                    <svg class="card-logo" viewBox="0 0 100 100" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="45" stroke="#0B192C" stroke-width="6" fill="#F1C40F"/>
+                        <path d="M50 15 L80 35 L80 65 L50 85 L20 65 L20 35 Z" fill="#1E3E62"/>
+                        <path d="M50 25 L70 40 L70 60 L50 75 L30 60 L30 40 Z" fill="#F1C40F"/>
+                        <circle cx="50" cy="50" r="10" fill="#0B192C"/>
+                        <!-- Inner gear/star representation -->
+                        <path d="M50 35 L53 45 L63 45 L55 51 L58 61 L50 55 L42 61 L45 51 L37 45 L47 45 Z" fill="#FFFFFF"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>IIT ROPAR</h1>
+                    <p>Intern Portal</p>
+                </div>
+            </a>
+            <nav>
+                <button class="nav-btn active" id="btn-terminal" onclick="switchTab('terminal')">
+                    <i data-lucide="clock"></i> Attendance Terminal
+                </button>
+                <button class="nav-btn" id="btn-upload" onclick="switchTab('upload')">
+                    <i data-lucide="file-spreadsheet"></i> Import & Add
+                </button>
+                <button class="nav-btn" id="btn-directory" onclick="switchTab('directory')">
+                    <i data-lucide="users"></i> Intern Directory
+                </button>
+                <button class="nav-btn" id="btn-generator" onclick="switchTab('generator')">
+                    <i data-lucide="contact-2"></i> ID Card Generator
+                </button>
+                <button class="nav-btn" id="btn-logs" onclick="switchTab('logs')">
+                    <i data-lucide="line-chart"></i> Admin Logs
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main>
+        
+        <!-- SECTION 1: Attendance Terminal -->
+        <section id="tab-terminal" class="tab-content active">
+            <div class="terminal-wrapper">
+                <div class="terminal-brand-logo">
+                    <i data-lucide="scan-face"></i>
+                </div>
+                <h2 class="terminal-title">IIT Ropar Intern System</h2>
+                <p class="terminal-subtitle">Scan ID card QR code or enter Intern ID to mark attendance</p>
+                
+                <div class="terminal-input-card">
+                    <div class="terminal-input-group">
+                        <label for="terminal-id-input">Enter Intern ID / Roll No</label>
+                        <input type="text" id="terminal-id-input" class="terminal-input" placeholder="e.g. IITR-INT-2026-001" autocomplete="off" autofocus>
+                        
+                        <div class="terminal-actions">
+                            <button class="btn btn-success terminal-action-btn" onclick="processTerminalAttendance('in')">
+                                <i data-lucide="log-in"></i> Check-In
+                            </button>
+                            <button class="btn btn-primary terminal-action-btn" style="background: linear-gradient(135deg, var(--accent-orange) 0%, #D35400 100%);" onclick="processTerminalAttendance('out')">
+                                <i data-lucide="log-out"></i> Check-Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Screen Notification Response overlay -->
+                <div id="terminal-status" class="terminal-status-overlay"></div>
+                
+                <!-- Recent Logs Feed -->
+                <div class="recent-checkins">
+                    <h3 class="recent-checkins-title">Recent Activity Feed</h3>
+                    <div id="recent-logs-feed">
+                        <!-- Filled by JS -->
+                        <div class="recent-checkin-item" style="justify-content: center; color: var(--text-gray);">
+                            No attendance marked yet today.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: Import & Manual Add -->
+        <section id="tab-upload" class="tab-content">
+            <div class="glass-panel">
+                <div class="glass-panel-header">
+                    <h2 class="glass-panel-title"><i data-lucide="upload-cloud"></i> Excel / CSV Import Portal</h2>
+                    <button class="btn btn-secondary btn-sm" onclick="downloadTemplate()">
+                        <i data-lucide="download"></i> Download Template
+                    </button>
+                </div>
+                
+                <!-- Excel Upload Zone -->
+                <div class="upload-container" id="excel-dropzone">
+                    <div class="upload-icon">
+                        <i data-lucide="file-up"></i>
+                    </div>
+                    <p>Drag & Drop your Excel (.xlsx, .xls) or CSV file here</p>
+                    <span>or click to browse from files</span>
+                    <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;">
+                </div>
+            </div>
+            
+            <div class="glass-panel">
+                <div class="glass-panel-header">
+                    <h2 class="glass-panel-title"><i data-lucide="user-plus"></i> Register Intern Manually</h2>
+                </div>
+                
+                <!-- Manual Registration Form -->
+                <form id="manual-intern-form" onsubmit="handleManualRegistration(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="m-id">ID Number / Roll No *</label>
+                            <input type="text" id="m-id" placeholder="IITR-INT-2201" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-name">Full Name *</label>
+                            <input type="text" id="m-name" placeholder="Abhishek Sharma" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-father">Father's Name *</label>
+                            <input type="text" id="m-father" placeholder="Sh. Rajesh Sharma" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-dob">Date of Birth (DoB) *</label>
+                            <input type="date" id="m-dob" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-dept">Department *</label>
+                            <select id="m-dept" required>
+                                <option value="" disabled selected>Select Department</option>
+                                <option value="Computer Science & Eng.">Computer Science & Eng.</option>
+                                <option value="Electrical Engineering">Electrical Engineering</option>
+                                <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                <option value="Chemical Engineering">Chemical Engineering</option>
+                                <option value="Civil Engineering">Civil Engineering</option>
+                                <option value="Metallurgical & Materials">Metallurgical & Materials</option>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Humanities & Social Sciences">Humanities & Social Sciences</option>
+                                <option value="SEnSRS Centre">SEnSRS Centre</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-issue">Date of Issue *</label>
+                            <input type="date" id="m-issue" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-valid">Valid Upto *</label>
+                            <input type="date" id="m-valid" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-phone">Contact No. *</label>
+                            <input type="tel" id="m-phone" placeholder="9876543210" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="m-address">Address *</label>
+                            <textarea id="m-address" placeholder="C-114, SAB, IIT ROPAR, Rupnagar, Punjab - 140001" rows="2" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-blood">Blood Group</label>
+                            <select id="m-blood">
+                                <option value="" selected>Select Group (Optional)</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="m-email">Email Address</label>
+                            <input type="email" id="m-email" placeholder="intern@iitrpr.ac.in">
+                        </div>
+                        <div class="form-group">
+                            <label for="m-emergency">Emergency Contact (No.)</label>
+                            <input type="tel" id="m-emergency" placeholder="Emergency Mobile Number">
+                        </div>
+                        <div class="form-group">
+                            <label for="m-mentor">Mentor / Guide</label>
+                            <input type="text" id="m-mentor" placeholder="Dr. Sudarshan Iyengar">
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                        <button type="reset" class="btn btn-secondary">Clear</button>
+                        <button type="submit" class="btn btn-primary"><i data-lucide="user-check"></i> Register Intern</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- SECTION 3: Intern Directory -->
+        <section id="tab-directory" class="tab-content">
+            <div class="glass-panel">
+                <div class="glass-panel-header">
+                    <h2 class="glass-panel-title"><i data-lucide="users"></i> Intern Records Directory</h2>
+                </div>
+                
+                <!-- Action Controls -->
+                <div class="action-bar">
+                    <div class="search-input-wrapper">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="directory-search" placeholder="Search by name, ID, department..." oninput="filterDirectory()">
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary" onclick="clearDatabase()">
+                            <i data-lucide="trash-2"></i> Clear Database
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Directory Table -->
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Photo Setup</th>
+                                <th>Intern ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Mentor</th>
+                                <th>Validity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="directory-table-body">
+                            <!-- Filled by JS -->
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: var(--text-gray); padding: 2rem;">
+                                    No interns registered. Please import an Excel sheet or register manually.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: ID Card Generator -->
+        <section id="tab-generator" class="tab-content">
+            <div class="glass-panel">
+                <div class="glass-panel-header">
+                    <h2 class="glass-panel-title"><i data-lucide="badge-check"></i> Printable ID Cards</h2>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="toggleFrontBackBulk()">
+                            <i data-lucide="refresh-cw"></i> Flip All (Front/Back)
+                        </button>
+                        <button class="btn btn-primary" onclick="downloadAllCards()">
+                            <i data-lucide="download"></i> Download All cards
+                        </button>
+                        <button class="btn btn-success" onclick="printAllCards()">
+                            <i data-lucide="printer"></i> Print All cards
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Card Display Area -->
+                <div class="bulk-grid" id="bulk-card-render-grid">
+                    <!-- Dynamic ID cards will render here -->
+                    <div style="grid-column: 1/-1; text-align: center; color: var(--text-gray); padding: 3rem;">
+                        No interns with completed details to display. Setup photos for interns in the Directory tab first.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: Admin Attendance Logs -->
+        <section id="tab-logs" class="tab-content">
+            <!-- Stats overview -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <i data-lucide="users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stats-total-interns">0</span>
+                        <span class="stat-label">Total Interns</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <i data-lucide="check-circle-2"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stats-checked-in">0</span>
+                        <span class="stat-label">Checked-In Today</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">
+                        <i data-lucide="log-out"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stats-checked-out">0</span>
+                        <span class="stat-label">Checked-Out Today</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon gold">
+                        <i data-lucide="percent"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="stats-attendance-rate">0%</span>
+                        <span class="stat-label">Attendance Rate</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="glass-panel">
+                <div class="glass-panel-header">
+                    <h2 class="glass-panel-title"><i data-lucide="history"></i> Daily Attendance Records</h2>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <input type="date" id="log-date-filter" class="form-input" style="width: auto; padding: 0.5rem 1rem;" onchange="filterAttendanceLogs()">
+                        <button class="btn btn-secondary" onclick="exportAttendanceLogsCSV()">
+                            <i data-lucide="file-text"></i> Export CSV Report
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Action Controls -->
+                <div class="action-bar">
+                    <div class="search-input-wrapper">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="logs-search" placeholder="Search logs by name or roll number..." oninput="filterAttendanceLogs()">
+                    </div>
+                </div>
+                
+                <!-- Log Table -->
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Intern ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Check-In</th>
+                                <th>Check-Out</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-table-body">
+                            <!-- Filled by JS -->
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: var(--text-gray); padding: 2rem;">
+                                    No attendance logs recorded yet.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- PHOTO UPLOAD & WEBCAM CAPTURE MODAL -->
+    <div class="modal" id="photo-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="photo-modal-title">Setup Profile Picture</h3>
+                <button class="modal-close" onclick="closePhotoModal()">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                
+                <!-- Webcam Mode -->
+                <div id="webcam-mode-container">
+                    <div class="camera-box">
+                        <video id="webcam-preview" class="camera-preview" autoplay playsinline muted></video>
+                        <canvas id="webcam-capture-canvas" class="camera-canvas" width="320" height="400"></canvas>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="btn btn-secondary" id="btn-start-camera" onclick="startWebcam()">
+                            <i data-lucide="video"></i> Start Camera
+                        </button>
+                        <button class="btn btn-primary" id="btn-take-snapshot" onclick="captureWebcamSnapshot()" disabled>
+                            <i data-lucide="camera"></i> Take Photo
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; color: var(--text-gray); font-size: 0.8rem; font-weight: 600; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                    &mdash; OR UPLOAD FILE &mdash;
+                </div>
+                
+                <!-- File Upload Mode -->
+                <div class="form-group">
+                    <label for="photo-file-input">Choose Image File</label>
+                    <input type="file" id="photo-file-input" accept="image/*" onchange="handlePhotoFileSelect(event)">
+                </div>
+                
+                <!-- Preview Capture & Confirm -->
+                <div id="captured-preview-container" style="display: none; flex-direction: column; align-items: center; gap: 0.5rem; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: var(--radius-md);">
+                    <span style="font-size: 0.8rem; font-weight: 600; color: var(--accent-gold);">Image Preview</span>
+                    <img id="captured-preview-img" style="width: 110px; height: 135px; object-fit: cover; border: 2px solid var(--accent-gold); border-radius: 4px;">
+                    <button class="btn btn-success" style="width: 100%; margin-top: 0.5rem;" onclick="confirmProfilePhoto()">
+                        <i data-lucide="check"></i> Confirm Photo
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Printing Section (Only visible during print media call) -->
+    <div id="print-section"></div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toast-box"></div>
+
+    <!-- Application Script Logic -->
+    <script src="app.js"></script>
+
+</body>
+</html>
